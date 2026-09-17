@@ -1,0 +1,34 @@
+node_modules
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
+blob-report/
+
+# .env
+# .env.local
+# .env.*.local
+# !.env.example
+
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# pnpm-only workspace — never commit a stray npm lockfile
+backend/package-lock.json
+frontend/package-lock.json
+
+.DS_Store
+Thumbs.db
+
+# TASK-032: local-disk attachment storage (dev/test only — never committed)
+backend/uploads/
+
+.vscode/*
+!.vscode/extensions.json
+.idea/
