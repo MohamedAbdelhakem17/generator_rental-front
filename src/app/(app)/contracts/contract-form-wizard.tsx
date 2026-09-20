@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomerCombobox } from '../projects/customer-combobox';
 import { ProjectSelect } from './project-select';
 import { GeneratorSelect } from './generator-select';
+import type { ContractDetail } from './types';
 
 const BILLING_METHODS = ['monthly', 'daily', 'weekly', 'hourly'] as const;
 
@@ -65,7 +66,24 @@ const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
   2: ['items'],
 };
 
-function defaultValues(): FormValues {
+function defaultValues(contract?: ContractDetail | null): FormValues {
+  if (contract) {
+    return {
+      customerId: contract.customer.id,
+      projectId: contract.project.id,
+      startDate: contract.startDate.slice(0, 10),
+      endDate: contract.endDate.slice(0, 10),
+      rentalMethod: contract.rentalMethod,
+      insuranceProvider: contract.insurance.provider ?? '',
+      insurancePolicyNumber: contract.insurance.policyNumber ?? '',
+      insuranceAmount: contract.insurance.amount ?? '',
+      items: contract.items.map((item) => ({
+        generatorId: item.generatorId,
+        billingMethod: item.billingMethod,
+        unitPrice: Number(item.unitPrice),
+      })),
+    };
+  }
   return {
     customerId: '',
     projectId: '',
@@ -82,10 +100,12 @@ function defaultValues(): FormValues {
 export interface ContractFormWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When set, the wizard edits this Draft contract (PATCH) instead of creating a new one. */
+  contract?: ContractDetail | null;
 }
 
 /** Section 13/18: a 3-step wizard (customer/project → dates/method → items), local state until submit. */
-export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardProps) {
+export function ContractFormWizard({ open, onOpenChange, contract = null }: ContractFormWizardProps) {
   const { t } = useLocale();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -113,7 +133,7 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
                 unitPrice: z.coerce.number().positive(t('common.enterPositiveNumber')),
               }),
             )
-            .min(0),
+            .min(1, t('contracts.formChooseGenerator')),
         })
         .refine((data) => data.endDate >= data.startDate, {
           message: t('contracts.formEndDateInvalid'),
@@ -124,10 +144,21 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultValues(),
+    defaultValues: defaultValues(contract),
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+
+  const isEditing = contract !== null;
+
+  useEffect(() => {
+    if (open) {
+      form.reset(defaultValues(contract));
+      setStep(contract ? 1 : 0);
+      setConflictWarnings({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, contract]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -179,25 +210,31 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
   }
 
   async function onSubmit(values: FormValues) {
+    const payload = {
+      startDate: values.startDate,
+      endDate: values.endDate,
+      rentalMethod: values.rentalMethod,
+      insurance: {
+        provider: values.insuranceProvider,
+        policyNumber: values.insurancePolicyNumber,
+        amount: values.insuranceAmount ? Number(values.insuranceAmount) : undefined,
+      },
+      items: values.items.map((item) => ({
+        generatorId: item.generatorId,
+        billingMethod: item.billingMethod,
+        unitPrice: item.unitPrice,
+      })),
+    };
+
     try {
-      await apiClient.post('/api/contracts', {
-        customerId: values.customerId,
-        projectId: values.projectId,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        rentalMethod: values.rentalMethod,
-        insurance: {
-          provider: values.insuranceProvider,
-          policyNumber: values.insurancePolicyNumber,
-          amount: values.insuranceAmount ? Number(values.insuranceAmount) : undefined,
-        },
-        items: values.items.map((item) => ({
-          generatorId: item.generatorId,
-          billingMethod: item.billingMethod,
-          unitPrice: item.unitPrice,
-        })),
-      });
-      toast.success(t('contracts.createdToast'));
+      if (isEditing && contract) {
+        await apiClient.patch(`/api/contracts/${contract.id}`, payload);
+        toast.success(t('contracts.updatedToast'));
+        await queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] });
+      } else {
+        await apiClient.post('/api/contracts', { ...payload, customerId: values.customerId, projectId: values.projectId });
+        toast.success(t('contracts.createdToast'));
+      }
       await queryClient.invalidateQueries({ queryKey: ['contracts'] });
       handleOpenChange(false);
     } catch (error) {
@@ -319,6 +356,11 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
                           void checkItemConflict(index, generatorId);
                         }}
                       />
+                      {form.formState.errors.items?.[index]?.generatorId ? (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.items[index]?.generatorId?.message}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="w-32">
                       <Label>{t('contracts.fieldMethod')}</Label>
@@ -341,6 +383,11 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
                     <div className="w-28">
                       <Label>{t('contracts.fieldUnitPrice')}</Label>
                       <Input type="number" step="any" {...form.register(`items.${index}.unitPrice`)} />
+                      {form.formState.errors.items?.[index]?.unitPrice ? (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.items[index]?.unitPrice?.message}
+                        </p>
+                      ) : null}
                     </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} aria-label={t('contracts.removeItem')}>
                       <Trash2 className="size-4" aria-hidden />
@@ -384,7 +431,7 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
           ) : null}
 
           <DialogFooter>
-            {step > 0 ? (
+            {step > (isEditing ? 1 : 0) ? (
               <Button type="button" variant="outline" onClick={() => setStep((current) => current - 1)}>
                 {t('contracts.back')}
               </Button>
@@ -399,7 +446,7 @@ export function ContractFormWizard({ open, onOpenChange }: ContractFormWizardPro
               </Button>
             ) : (
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {t('contracts.createDraft')}
+                {isEditing ? t('contracts.saveChanges') : t('contracts.createDraft')}
               </Button>
             )}
           </DialogFooter>

@@ -52,6 +52,10 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDi
   const queryClient = useQueryClient();
   const isEditing = Boolean(expense);
 
+  const { data: categories } = useQuery({
+    queryKey: ['expenses', 'categories'],
+    queryFn: ({ signal }) => apiClient.get<string[]>('/api/expenses/categories', undefined, signal),
+  });
   const { data: generators } = useQuery({
     queryKey: ['generators', 'select'],
     queryFn: ({ signal }) =>
@@ -168,8 +172,22 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDi
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="expense-category">{t('expenses.fieldCategory')}</Label>
-              <Input id="expense-category" {...form.register('category')} />
+              <Label>{t('expenses.fieldCategory')}</Label>
+              <Select
+                value={form.watch('category')}
+                onValueChange={(value) => form.setValue('category', value, { shouldValidate: true })}
+              >
+                <SelectTrigger id="expense-category">
+                  <SelectValue placeholder={t('expenses.chooseCategoryPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {form.formState.errors.category ? (
                 <p className="text-xs text-destructive">{form.formState.errors.category.message}</p>
               ) : null}

@@ -24,7 +24,6 @@ import { Textarea } from '@/components/ui/textarea';
 import type { CustomerRow } from './types';
 
 type FormValues = {
-  code: string;
   companyName: string;
   contactPerson?: string;
   phone?: string;
@@ -33,7 +32,6 @@ type FormValues = {
 };
 
 const DEFAULT_VALUES: FormValues = {
-  code: '',
   companyName: '',
   contactPerson: '',
   phone: '',
@@ -56,7 +54,6 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
   const formSchema = useMemo(
     () =>
       z.object({
-        code: z.string().trim().min(1, t('customers.formCodeRequired')).max(30),
         companyName: z.string().trim().min(1, t('customers.formCompanyNameRequired')).max(150),
         contactPerson: z.string().trim().max(100).optional(),
         phone: z.string().trim().max(30).optional(),
@@ -76,7 +73,6 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
     form.reset(
       customer
         ? {
-            code: customer.code,
             companyName: customer.companyName,
             contactPerson: customer.contactPerson,
             phone: customer.phone,
@@ -128,11 +124,12 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
 
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cust-code">{t('customers.fieldCode')}</Label>
-              <Input id="cust-code" disabled={isEdit} {...form.register('code')} />
-              {form.formState.errors.code ? <p className="text-xs text-destructive">{form.formState.errors.code.message}</p> : null}
-            </div>
+            {isEdit ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cust-code">{t('customers.fieldCode')}</Label>
+                <Input id="cust-code" disabled value={customer?.code ?? ''} />
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="cust-company">{t('customers.fieldCompanyName')}</Label>
               <Input id="cust-company" {...form.register('companyName')} />

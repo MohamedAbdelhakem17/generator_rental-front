@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Play, ShieldCheck, XCircle } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, ShieldCheck, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { apiClient, ApiError } from '@/lib/apiClient';
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CancelContractDialog } from '../cancel-contract-dialog';
 import { SharedAssignmentDialog } from '../shared-assignment-dialog';
+import { ContractFormWizard } from '../contract-form-wizard';
 import type { ContractDetail, ContractStatus } from '../types';
 
 const STATUS_TONES: Record<ContractStatus, StatusTone> = {
@@ -87,6 +88,7 @@ export default function ContractDetailPage() {
   const canWrite = user?.permissions.includes('contracts:write') ?? false;
   const canOverride = user?.permissions.includes('contracts:sharedAssignmentOverride') ?? false;
 
+  const [isEditing, setIsEditing] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [itemErrors, setItemErrors] = useState<Map<number, string[]>>(new Map());
@@ -144,6 +146,12 @@ export default function ContractDetailPage() {
               {t('contracts.backToContracts')}
             </Button>
             <StatusBadge status={contract.status} />
+            {canWrite && contract.status === 'Draft' ? (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="size-4" aria-hidden />
+                {t('contracts.edit')}
+              </Button>
+            ) : null}
             {canWrite && contract.status === 'Draft' ? (
               <Button variant="default" size="sm" onClick={() => setIsActivating(true)}>
                 <Play className="size-4" aria-hidden />
@@ -265,6 +273,8 @@ export default function ContractDetailPage() {
           <AttachmentsPanel entityType="Contract" entityId={contract.id} canWrite={canWrite} />
         </TabsContent>
       </Tabs>
+
+      <ContractFormWizard open={isEditing} onOpenChange={setIsEditing} contract={contract} />
 
       <ConfirmDialog
         open={isActivating}
