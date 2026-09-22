@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient } from '@/lib/apiClient';
 import { useLocale } from '@/lib/i18n/locale-provider';
 import { useSession } from '@/lib/session/session-provider';
+import { CompanyProfilePanel } from './company-profile-panel';
 import { ListSettingField } from './list-setting-field';
 import { NumberSettingField } from './number-setting-field';
 import { TextSettingField } from './text-setting-field';
@@ -82,6 +83,9 @@ export default function SettingsPage() {
           ) : null}
           {hasReferenceLists ? (
             <TabsTrigger value="referenceLists">{t('settings.tabReferenceLists')}</TabsTrigger>
+          ) : null}
+          {canManage ? (
+            <TabsTrigger value="companyProfile">{t('settings.tabCompanyProfile')}</TabsTrigger>
           ) : null}
         </TabsList>
 
@@ -187,6 +191,14 @@ export default function SettingsPage() {
                   onSaved={onSaved}
                 />
               ) : null}
+            </div>
+          </TabsContent>
+        ) : null}
+
+        {canManage ? (
+          <TabsContent value="companyProfile">
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <CompanyProfilePanel canEdit={canManage} />
             </div>
           </TabsContent>
         ) : null}

@@ -8,6 +8,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -46,22 +47,33 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 const SESSION_QUERY_KEY = ['auth', 'me'];
 
+/** Routes outside the (app)/(print) auth-guarded groups — the company profile link-tree page
+ * (Section: public company profile) is meant to be viewed by anyone, with no session cookie,
+ * so it must never trigger the 401-redirect-to-login flow every other route relies on. */
+const PUBLIC_PATHS = ['/login', '/company-profile'];
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { t } = useLocale();
+  const pathname = usePathname();
+  const publicPath = isPublicPath(pathname ?? '');
 
   const { data, isLoading } = useQuery({
     queryKey: SESSION_QUERY_KEY,
     queryFn: ({ signal }) => apiClient.get<RawMeResponse>('/api/auth/me', undefined, signal),
     retry: false,
     staleTime: 60_000,
+    enabled: !publicPath,
   });
 
   // Section 19: a 401 anywhere shows this toast — but only when there was a previously
   // known session; an anonymous visitor's initial /api/auth/me 401 isn't an "expiry".
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      if (typeof window === 'undefined' || window.location.pathname === '/login') return;
+      if (typeof window === 'undefined' || isPublicPath(window.location.pathname)) return;
       if (queryClient.getQueryData(SESSION_QUERY_KEY)) {
         toast.error(t('login.sessionExpired'));
       }

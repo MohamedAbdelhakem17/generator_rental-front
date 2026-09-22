@@ -144,7 +144,7 @@
   --color-status-stopped-fg: var(--status-stopped-fg);
   --color-status-stopped-border: var(--status-stopped-border);
 
-  --font-sans: var(--font-plex-sans), var(--font-plex-sans-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-el-messiri), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
@@ -168,10 +168,6 @@
     font-family: var(--font-sans);
     font-size: 0.8125rem;
     line-height: 1.4;
-  }
-
-  [dir='rtl'] {
-    font-family: var(--font-plex-sans-arabic), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   }
 
   ::selection {

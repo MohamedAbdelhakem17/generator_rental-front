@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 
-import { plexSans, plexSansArabic, plexMono } from '@/lib/fonts';
+import { elMessiri, plexMono } from '@/lib/fonts';
 import { LocaleProvider } from '@/lib/i18n/locale-provider';
 import { SessionProvider } from '@/lib/session/session-provider';
 import { QueryProvider } from '@/lib/query-provider';
@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="ar"
       dir="rtl"
-      className={`${plexSans.variable} ${plexSansArabic.variable} ${plexMono.variable}`}
+      className={`${elMessiri.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
